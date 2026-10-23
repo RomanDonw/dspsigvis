@@ -129,7 +129,6 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
     // ================================
 
     glGenBuffers(1, &sampbuff);
-    //glBindBuffer(GL_SHADER_STORAGE_BUFFER, sampbuff);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sampbuff);
 
     // ================================

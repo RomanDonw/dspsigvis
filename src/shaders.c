@@ -30,18 +30,6 @@ const char *fragmentshadersource =
     "{"
         "uint idx = clamp(uint(floor(scrcoord.x * samplescount)), 0, samplescount - 1);"
         "float v = samples[idx];"
-
-        /*
-        "if (scrcoord.y < -0.001)"
-        "{"
-            "FragmentColor = scrcoord.y + 0.001 >= v ? vec4(1) : vec4(0, 0, 0, 1);"
-        "}"
-        "else if (scrcoord.y > 0.001)"
-        "{"
-            "FragmentColor = scrcoord.y - 0.001 <= v ? vec4(1) : vec4(0, 0, 0, 1);"
-        "}"
-        "else FragmentColor = vec4(0, 0, 1, 1);"
-        */
         
         "if (scrcoord.y < 0) FragmentColor = scrcoord.y + 0.001 >= v ? vec4(1) : vec4(0, 0, 0, 1);"
         "else if (scrcoord.y > 0) FragmentColor = scrcoord.y - 0.001 <= v ? vec4(1) : vec4(0, 0, 0, 1);"
