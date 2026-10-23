@@ -28,11 +28,23 @@ const char *fragmentshadersource =
     
     "void main(void)"
     "{"
-        "uint idx = clamp(uint(floor(scrcoord.x * samplescount)), 0, samplescount - 1);"
-        "float v = samples[idx];"
+        "if (samplescount == 0) discard;"
+
+        "uint lastidx = samplescount - 1;"
+        "uint curridx = uint(floor(scrcoord.x * float(lastidx)));"
+        "uint nextidx = min(curridx + 1, samplescount - 1);"
         
-        "if (scrcoord.y < 0) FragmentColor = scrcoord.y >= v ? vec4(1) : vec4(0, 0, 0, 1);"
-        "else if (scrcoord.y > 0) FragmentColor = scrcoord.y <= v ? vec4(1) : vec4(0, 0, 0, 1);"
-        "else FragmentColor = vec4(1);"
+        "float currx = float(curridx) / float(lastidx);"
+        "float nextx = float(nextidx) / float(lastidx);"
+        "float centx = mix(currx, nextx, 0.5);"
+        "float v = mix(samples[curridx], samples[nextidx], (scrcoord.x - currx) / (nextx - currx));"
+        
+        "if (scrcoord.x >= centx - 0.05 && scrcoord.x <= centx + 0.05)"
+        "{"
+            "if (scrcoord.y < 0) FragmentColor = (scrcoord.y >= v - 0.01 && scrcoord.y <= v + 0.01)"
+                "? vec4(1) : vec4(0, 0, 0, 1);"
+            "else FragmentColor = (scrcoord.y <= v + 0.01 && scrcoord.y >= v - 0.01) "
+                "? vec4(1) : vec4(0, 0, 0, 1);"
+        "}"
     "}"
 ;
