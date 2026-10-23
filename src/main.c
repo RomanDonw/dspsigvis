@@ -15,8 +15,8 @@ static GLFWwindow *win;
 #define INITWIDTH 800
 #define INITHEIGHT 600
 
-static void *inport;
-static GLuint sampbuff;
+static void *inleftport, *inrightport;
+static GLuint sampbuffs[2];
 static GLint u_samplescount;
 
 static char *getshadercompilelog(GLuint shader)
@@ -37,11 +37,12 @@ static void onresize(GLFWwindow *window, int width, int height)
 
 unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * const argv[], const char **sysname, const char **dispname)
 {
-    float fgcolor[4] = {1, 1, 1, 1};
+    float fgcolor[4] = {1, 0, 1, 1};
     float bgcolor[4] = {0, 0, 0, 1};
+    bool inversecolors = false;
     {
         int p;
-        while ((p = getopt(argc, argv, "b:f:")) != -1)
+        while ((p = getopt(argc, argv, "b:f:i")) != -1)
         {
             switch (p)
             {
@@ -61,6 +62,10 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
                     fgcolor[1] = clampf(fgcolor[1], 0, 1);
                     fgcolor[2] = clampf(fgcolor[2], 0, 1);
                     fgcolor[3] = clampf(fgcolor[3], 0, 1);
+                    break;
+
+                case 'i':
+                    inversecolors = true;
                     break;
             }
         }
@@ -83,11 +88,15 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
 
     // ================================
 
-    if (!(inport = lapi->addport("in", NULL, DSPPortDirection_Input, 0)))
-    { puts("failed addding single input port"); goto errorquit_afterinitglfw; }
+    if (!(inleftport = lapi->addport("left", NULL, DSPPortDirection_Input, 0)))
+    { puts("failed addding left channel input port"); goto errorquit_afterinitglfw; }
+    if (!(inrightport = lapi->addport("right", NULL, DSPPortDirection_Input, 0)))
+    { puts("failed addding right channel input port"); goto errorquit_afterinitglfw; }
 
     // ================================
 
+    float fgleftcolor[3];
+    float fgrightcolor[3];
     {
         GLint status;
         GLuint vs = glCreateShader(GL_VERTEX_SHADER);
@@ -129,7 +138,16 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
 
         u_samplescount = glGetUniformLocation(prog, "samplescount");
         glUniform4fv(glGetUniformLocation(prog, "bgcolor"), 1, bgcolor);
-        glUniform4fv(glGetUniformLocation(prog, "fgcolor"), 1, fgcolor);
+
+        fgleftcolor[0] = inversecolors ? 1 - fgcolor[0] : fgcolor[0];
+        fgleftcolor[1] = inversecolors ? 1 - fgcolor[1] : fgcolor[1];
+        fgleftcolor[2] = inversecolors ? 1 - fgcolor[2] : fgcolor[2];
+        glUniform3fv(glGetUniformLocation(prog, "fgleftcolor"), 1, fgleftcolor);
+        
+        fgrightcolor[0] = inversecolors ? fgcolor[0] : 1 - fgcolor[0];
+        fgrightcolor[1] = inversecolors ? fgcolor[1] : 1 - fgcolor[1];
+        fgrightcolor[2] = inversecolors ? fgcolor[2] : 1 - fgcolor[2];
+        glUniform3fv(glGetUniformLocation(prog, "fgrightcolor"), 1, fgrightcolor);
     }
 
     // ================================
@@ -162,8 +180,9 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
 
     // ================================
 
-    glGenBuffers(1, &sampbuff);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sampbuff);
+    glGenBuffers(2, sampbuffs);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sampbuffs[0]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, sampbuffs[1]);
 
     // ================================
 
@@ -188,19 +207,26 @@ unsigned short dspmodule_process(const DSPLoaderAPI *lapi, unsigned long long po
     glfwMakeContextCurrent(win);
     if (glfwWindowShouldClose(win)) return 1;
 
-    const float *in = lapi->getportbuffer(inport, duration);
-    if (!in) goto skiprender;
-    const size_t insize = duration * sizeof(float);
+    const float *inleft = lapi->getportbuffer(inleftport, duration);
+    if (!inleft) goto skiprender;
+    const float *inright = lapi->getportbuffer(inrightport, duration);
+    if (!inright) goto skiprender;
     
+    const size_t insize = duration * sizeof(float);
     static size_t currsize = 0;
     if (currsize != insize)
     {
-        glBufferData(GL_SHADER_STORAGE_BUFFER, insize, in, GL_DYNAMIC_READ);
+        glNamedBufferData(sampbuffs[0], insize, inleft, GL_DYNAMIC_READ);
+        glNamedBufferData(sampbuffs[1], insize, inright, GL_DYNAMIC_READ);
+        glUniform1ui(u_samplescount, duration);
         currsize = insize;
     }
-    else glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, insize, in);
+    else
+    {
+        glNamedBufferSubData(sampbuffs[0], 0, insize, inleft);
+        glNamedBufferSubData(sampbuffs[1], 0, insize, inright);
+    }
 
-    glUniform1ui(u_samplescount, duration);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, NULL);
 
     glfwSwapBuffers(win);
