@@ -15,11 +15,8 @@ static GLFWwindow *win;
 #define INITHEIGHT 600
 
 static void *inport;
-static struct
-{
-    GLuint desc;
-    size_t size;
-} sampbuff = {0};
+static GLuint sampbuff;
+static GLint u_samplescount;
 
 static char *getshadercompilelog(GLuint shader)
 {
@@ -97,6 +94,8 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
         if (!status) { puts("shader program linking failed"); goto errorquit_afterinitglfw; }
         
         glUseProgram(prog);
+
+        u_samplescount = glGetUniformLocation(prog, "samplescount");
     }
 
     // ================================
@@ -129,8 +128,9 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
 
     // ================================
 
-    glGenBuffers(1, &sampbuff.desc);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sampbuff.desc);
+    glGenBuffers(1, &sampbuff);
+    //glBindBuffer(GL_SHADER_STORAGE_BUFFER, sampbuff);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, sampbuff);
 
     // ================================
 
@@ -153,9 +153,23 @@ unsigned short dspmodule_process(const DSPLoaderAPI *lapi, unsigned long long po
     glfwMakeContextCurrent(win);
     if (glfwWindowShouldClose(win)) return 1;
 
+    const float *in = lapi->getportbuffer(inport, duration);
+    if (!in) goto skiprender;
+    const size_t insize = duration * sizeof(float);
+    
+    static size_t currsize = 0;
+    if (currsize != insize)
+    {
+        glBufferData(GL_SHADER_STORAGE_BUFFER, insize, in, GL_DYNAMIC_READ);
+        currsize = insize;
+    }
+    else glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, insize, in);
+
+    glUniform1ui(u_samplescount, duration);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, NULL);
 
     glfwSwapBuffers(win);
+    skiprender:
     glfwPollEvents();
 
     return 0;
