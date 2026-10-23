@@ -1,6 +1,7 @@
 #include <dspmodule.h>
-#include "main.h"
 
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
 #include <glad/gl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +10,7 @@
 
 const unsigned short dspmodule_requiredAPIversion = 1;
 
-GLFWwindow *win;
+static GLFWwindow *win;
 #define INITWIDTH 800
 #define INITHEIGHT 600
 
