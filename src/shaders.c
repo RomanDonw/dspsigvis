@@ -23,6 +23,9 @@ const char *fragmentshadersource =
     "};"
     "uniform uint samplescount;"
 
+    "uniform vec4 bgcolor;"
+    "uniform vec4 fgcolor;"
+
     "in vec2 scrcoord;"
     "out vec4 FragmentColor;"
     
@@ -42,9 +45,9 @@ const char *fragmentshadersource =
         "if (scrcoord.x >= centx - 0.05 && scrcoord.x <= centx + 0.05)"
         "{"
             "if (scrcoord.y < 0) FragmentColor = (scrcoord.y >= v - 0.01 && scrcoord.y <= v + 0.01)"
-                "? vec4(1) : vec4(0, 0, 0, 1);"
+                "? fgcolor : bgcolor;"
             "else FragmentColor = (scrcoord.y <= v + 0.01 && scrcoord.y >= v - 0.01) "
-                "? vec4(1) : vec4(0, 0, 0, 1);"
+                "? fgcolor : bgcolor;"
         "}"
     "}"
 ;
