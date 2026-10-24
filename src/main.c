@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <stdbool.h>
 
 #include "shaders.h"
 
@@ -34,6 +35,13 @@ static char *getshadercompilelog(GLuint shader)
 
 static void onresize(GLFWwindow *window, int width, int height)
 { glViewport(0, 0, width > 1 ? width : 1, height > 1 ? height : 1); }
+
+static bool paused = false;
+
+static void onkey(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    if (action == GLFW_PRESS && key == GLFW_KEY_SPACE) paused = !paused;
+}
 
 unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * const argv[], const char **sysname, const char **dispname)
 {
@@ -89,11 +97,13 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
     glfwWindowHint(GLFW_ALPHA_BITS, 8);
     if (!(win = glfwCreateWindow(INITWIDTH, INITHEIGHT, "Signal visualizer", NULL, NULL)))
     { puts("failed creating GLFW window"); goto errorquit_afterinitglfw; }
-    glfwSetFramebufferSizeCallback(win, onresize);
+    glfwSetKeyCallback(win, onkey);
     glfwMakeContextCurrent(win);
-
+    
     if (!gladLoadGL((void *)glfwGetProcAddress))
     { puts("failed loading OpenGL functions through GLAD"); goto errorquit_afterinitglfw; }
+    onresize(win, INITWIDTH, INITHEIGHT);
+    glfwSetFramebufferSizeCallback(win, onresize);
 
     // ================================
 
@@ -208,6 +218,7 @@ unsigned short dspmodule_process(const DSPLoaderAPI *lapi, unsigned long long po
 {
     glfwMakeContextCurrent(win);
     if (glfwWindowShouldClose(win)) return 1;
+    if (paused) goto skipupdate;
 
     const float *inleft = lapi->getportbuffer(inleftport, duration);
     if (!inleft) goto skiprender;
@@ -229,8 +240,8 @@ unsigned short dspmodule_process(const DSPLoaderAPI *lapi, unsigned long long po
         glNamedBufferSubData(sampbuffs[1], 0, insize, inright);
     }
 
+    skipupdate:
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, NULL);
-
     glfwSwapBuffers(win);
     skiprender:
     glfwPollEvents();
