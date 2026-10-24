@@ -37,12 +37,13 @@ static void onresize(GLFWwindow *window, int width, int height)
 
 unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * const argv[], const char **sysname, const char **dispname)
 {
-    float fgcolor[4] = {1, 0, 1, 1};
+    float fgleftcolor[3] = {1, 0, 1};
+    float fgrightcolor[3] = {0, 1, 0};
+    float fgalpha = 1;
     float bgcolor[4] = {0, 0, 0, 1};
-    bool inversecolors = false;
     {
         int p;
-        while ((p = getopt(argc, argv, "b:f:i")) != -1)
+        while ((p = getopt(argc, argv, "b:l:r:a:")) != -1)
         {
             switch (p)
             {
@@ -55,17 +56,25 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
                     bgcolor[3] = clampf(bgcolor[3], 0, 1);
                     break;
 
-                case 'f':
-                    if (sscanf(optarg, "%f,%f,%f,%f", fgcolor, fgcolor + 1, fgcolor + 2, fgcolor + 3) < 4)
-                    { puts("error parsing option -f"); return 1; }
-                    fgcolor[0] = clampf(fgcolor[0], 0, 1);
-                    fgcolor[1] = clampf(fgcolor[1], 0, 1);
-                    fgcolor[2] = clampf(fgcolor[2], 0, 1);
-                    fgcolor[3] = clampf(fgcolor[3], 0, 1);
+                case 'l':
+                    if (sscanf(optarg, "%f,%f,%f", fgleftcolor, fgleftcolor + 1, fgleftcolor + 2) < 3)
+                    { puts("error parsing option -l"); return 1; }
+                    fgleftcolor[0] = clampf(fgleftcolor[0], 0, 1);
+                    fgleftcolor[1] = clampf(fgleftcolor[1], 0, 1);
+                    fgleftcolor[2] = clampf(fgleftcolor[2], 0, 1);
                     break;
 
-                case 'i':
-                    inversecolors = true;
+                case 'r':
+                    if (sscanf(optarg, "%f,%f,%f", fgrightcolor, fgrightcolor + 1, fgrightcolor + 2) < 3)
+                    { puts("error parsing option -r"); return 1; }
+                    fgrightcolor[0] = clampf(fgrightcolor[0], 0, 1);
+                    fgrightcolor[1] = clampf(fgrightcolor[1], 0, 1);
+                    fgrightcolor[2] = clampf(fgrightcolor[2], 0, 1);
+                    break;
+
+                case 'a':
+                    if (sscanf(optarg, "%f", &fgalpha) < 1) { puts("error parsing option -a"); return 1; }
+                    fgalpha = clampf(fgalpha, 0, 1);
                     break;
             }
         }
@@ -95,8 +104,6 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
 
     // ================================
 
-    float fgleftcolor[3];
-    float fgrightcolor[3];
     {
         GLint status;
         GLuint vs = glCreateShader(GL_VERTEX_SHADER);
@@ -138,16 +145,9 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
 
         u_samplescount = glGetUniformLocation(prog, "samplescount");
         glUniform4fv(glGetUniformLocation(prog, "bgcolor"), 1, bgcolor);
-
-        fgleftcolor[0] = inversecolors ? 1 - fgcolor[0] : fgcolor[0];
-        fgleftcolor[1] = inversecolors ? 1 - fgcolor[1] : fgcolor[1];
-        fgleftcolor[2] = inversecolors ? 1 - fgcolor[2] : fgcolor[2];
         glUniform3fv(glGetUniformLocation(prog, "fgleftcolor"), 1, fgleftcolor);
-        
-        fgrightcolor[0] = inversecolors ? fgcolor[0] : 1 - fgcolor[0];
-        fgrightcolor[1] = inversecolors ? fgcolor[1] : 1 - fgcolor[1];
-        fgrightcolor[2] = inversecolors ? fgcolor[2] : 1 - fgcolor[2];
         glUniform3fv(glGetUniformLocation(prog, "fgrightcolor"), 1, fgrightcolor);
+        glUniform1f(glGetUniformLocation(prog, "fgalpha"), fgalpha);
     }
 
     // ================================
@@ -191,8 +191,10 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
 
     // ================================
 
-    printf("fgcolor: [%f, %f, %f, %f]\n", fgcolor[0], fgcolor[1], fgcolor[2], fgcolor[3]);
-    printf("bgcolor: [%f, %f, %f, %f]\n", bgcolor[0], bgcolor[1], bgcolor[2], bgcolor[3]);
+    printf("fgleftcolor: [%f, %f, %f]\nfgrightcolor: [%f, %f, %f]\nfgalpha: %f\nbgcolor: [%f, %f, %f, %f]\n",
+        fgleftcolor[0], fgleftcolor[1], fgleftcolor[2], fgrightcolor[0], fgrightcolor[1], fgrightcolor[2], fgalpha,
+        bgcolor[0], bgcolor[1], bgcolor[2], bgcolor[3]);
+
     *sysname = "dspsigvis";
     *dispname = "signal visualizer";
     return 0;

@@ -30,6 +30,7 @@ const char *fragmentshadersource =
     "uniform vec4 bgcolor;"
     "uniform vec3 fgleftcolor;"
     "uniform vec3 fgrightcolor;"
+    "uniform float fgalpha;"
 
     "in vec2 scrcoord;"
     "out vec4 FragmentColor;"
@@ -52,7 +53,9 @@ const char *fragmentshadersource =
         "bool hasright = scrcoord.y <= right + 0.01 && scrcoord.y >= right - 0.01;"
         
         "if (haswide && (hasleft || hasright))"
-            "FragmentColor = vec4((hasleft ? fgleftcolor : vec3(0)) + (hasright ? fgrightcolor : vec3(0)), 1);"
+        "{"
+            "FragmentColor = vec4((hasleft ? fgleftcolor : vec3(0)) + (hasright ? fgrightcolor : vec3(0)), fgalpha);"
+        "}"
         "else FragmentColor = bgcolor;"
     "}"
 ;
