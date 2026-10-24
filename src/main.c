@@ -37,11 +37,8 @@ static void onresize(GLFWwindow *window, int width, int height)
 { glViewport(0, 0, width > 1 ? width : 1, height > 1 ? height : 1); }
 
 static bool paused = false;
-
 static void onkey(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-    if (action == GLFW_PRESS && key == GLFW_KEY_SPACE) paused = !paused;
-}
+{ if (action == GLFW_PRESS && key == GLFW_KEY_SPACE) paused = !paused; }
 
 unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * const argv[], const char **sysname, const char **dispname)
 {
@@ -249,7 +246,4 @@ unsigned short dspmodule_process(const DSPLoaderAPI *lapi, unsigned long long po
     return 0;
 }
 
-void dspmodule_cleanup(void)
-{
-    glfwTerminate();
-}
+void dspmodule_cleanup(void) { glfwTerminate(); }

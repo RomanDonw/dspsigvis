@@ -53,9 +53,7 @@ const char *fragmentshadersource =
         "bool hasright = scrcoord.y <= right + 0.01 && scrcoord.y >= right - 0.01;"
         
         "if (haswide && (hasleft || hasright))"
-        "{"
             "FragmentColor = vec4((hasleft ? fgleftcolor : vec3(0)) + (hasright ? fgrightcolor : vec3(0)), fgalpha);"
-        "}"
         "else FragmentColor = bgcolor;"
     "}"
 ;
