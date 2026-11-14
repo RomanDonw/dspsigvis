@@ -10,7 +10,7 @@
 
 #include "shaders.h"
 
-const unsigned short dspmodule_requiredAPIversion = 1;
+const unsigned short dspmodule_requiredAPIversion = 3;
 
 static GLFWwindow *win;
 #define INITWIDTH 800
@@ -53,8 +53,7 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
             switch (p)
             {
                 case 'b':
-                    if (sscanf(optarg, "%f,%f,%f,%f", bgcolor, bgcolor + 1, bgcolor + 2, bgcolor + 3) < 4)
-                    { puts("error parsing option -b"); return 1; }
+                    if (sscanf(optarg, "%f,%f,%f,%f", bgcolor, bgcolor + 1, bgcolor + 2, bgcolor + 3) < 4) goto parseoptfail;
                     bgcolor[0] = clampf(bgcolor[0], 0, 1);
                     bgcolor[1] = clampf(bgcolor[1], 0, 1);
                     bgcolor[2] = clampf(bgcolor[2], 0, 1);
@@ -62,30 +61,32 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
                     break;
 
                 case 'l':
-                    if (sscanf(optarg, "%f,%f,%f", fgleftcolor, fgleftcolor + 1, fgleftcolor + 2) < 3)
-                    { puts("error parsing option -l"); return 1; }
+                    if (sscanf(optarg, "%f,%f,%f", fgleftcolor, fgleftcolor + 1, fgleftcolor + 2) < 3) goto parseoptfail;
                     fgleftcolor[0] = clampf(fgleftcolor[0], 0, 1);
                     fgleftcolor[1] = clampf(fgleftcolor[1], 0, 1);
                     fgleftcolor[2] = clampf(fgleftcolor[2], 0, 1);
                     break;
 
                 case 'r':
-                    if (sscanf(optarg, "%f,%f,%f", fgrightcolor, fgrightcolor + 1, fgrightcolor + 2) < 3)
-                    { puts("error parsing option -r"); return 1; }
+                    if (sscanf(optarg, "%f,%f,%f", fgrightcolor, fgrightcolor + 1, fgrightcolor + 2) < 3) goto parseoptfail;
                     fgrightcolor[0] = clampf(fgrightcolor[0], 0, 1);
                     fgrightcolor[1] = clampf(fgrightcolor[1], 0, 1);
                     fgrightcolor[2] = clampf(fgrightcolor[2], 0, 1);
                     break;
 
                 case 'a':
-                    if (sscanf(optarg, "%f", &fgalpha) < 1) { puts("error parsing option -a"); return 1; }
+                    if (sscanf(optarg, "%f", &fgalpha) < 1) goto parseoptfail;
                     fgalpha = clampf(fgalpha, 0, 1);
                     break;
+
+                parseoptfail:
+                    lapi->log(DSPLogLevel_Fatal, "error parsing option -%c", (char)p);
+                return 1;
             }
         }
     }
 
-    if (!glfwInit()) { puts("failed to initialize GLFW"); return 1; }
+    if (!glfwInit()) { lapi->log(DSPLogLevel_Fatal, "failed to initialize GLFW"); return 1; }
 
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -93,21 +94,21 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
     glfwWindowHint(GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
     glfwWindowHint(GLFW_ALPHA_BITS, 8);
     if (!(win = glfwCreateWindow(INITWIDTH, INITHEIGHT, "Signal visualizer", NULL, NULL)))
-    { puts("failed creating GLFW window"); goto errorquit_afterinitglfw; }
+    { lapi->log(DSPLogLevel_Fatal, "failed creating GLFW window"); goto errorquit_afterinitglfw; }
     glfwSetKeyCallback(win, onkey);
     glfwMakeContextCurrent(win);
     
     if (!gladLoadGL((void *)glfwGetProcAddress))
-    { puts("failed loading OpenGL functions through GLAD"); goto errorquit_afterinitglfw; }
+    { lapi->log(DSPLogLevel_Fatal, "failed loading OpenGL functions through GLAD"); goto errorquit_afterinitglfw; }
     onresize(win, INITWIDTH, INITHEIGHT);
     glfwSetFramebufferSizeCallback(win, onresize);
 
     // ================================
 
     if (!(inleftport = lapi->addport("left", NULL, DSPPortDirection_Input, 0)))
-    { puts("failed addding left channel input port"); goto errorquit_afterinitglfw; }
+    { lapi->log(DSPLogLevel_Fatal, "failed addding left channel input port"); goto errorquit_afterinitglfw; }
     if (!(inrightport = lapi->addport("right", NULL, DSPPortDirection_Input, 0)))
-    { puts("failed addding right channel input port"); goto errorquit_afterinitglfw; }
+    { lapi->log(DSPLogLevel_Fatal, "failed addding right channel input port"); goto errorquit_afterinitglfw; }
 
     // ================================
 
@@ -120,9 +121,9 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
         if (!status)
         {
             char *log = getshadercompilelog(vs);
-            if (!log) { puts("failed getting vertex shader compilation log"); goto errorquit_afterinitglfw; }
+            if (!log) { lapi->log(DSPLogLevel_Fatal, "failed getting vertex shader compilation log"); goto errorquit_afterinitglfw; }
             
-            printf("vertex shader compilation failed:\n%s", log);
+            lapi->log(DSPLogLevel_Fatal, "vertex shader compilation failed:\n%s", log);
             free(log);
             goto errorquit_afterinitglfw;
         }
@@ -134,9 +135,9 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
         if (!status)
         {
             char *log = getshadercompilelog(fs);
-            if (!log) { puts("failed getting fragment shader compilation log"); goto errorquit_afterinitglfw; }
+            if (!log) { lapi->log(DSPLogLevel_Fatal, "failed getting fragment shader compilation log"); goto errorquit_afterinitglfw; }
             
-            printf("fragment shader compilation failed:\n%s", log);
+            lapi->log(DSPLogLevel_Fatal, "fragment shader compilation failed:\n%s", log);
             free(log);
             goto errorquit_afterinitglfw;
         }
@@ -146,7 +147,7 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
         glAttachShader(prog, fs);
         glLinkProgram(prog);
         glGetProgramiv(prog, GL_LINK_STATUS, &status);
-        if (!status) { puts("shader program linking failed"); goto errorquit_afterinitglfw; }
+        if (!status) { lapi->log(DSPLogLevel_Fatal, "shader program linking failed"); goto errorquit_afterinitglfw; }
         
         glUseProgram(prog);
 
@@ -198,7 +199,7 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
 
     // ================================
 
-    printf("fgleftcolor: [%f, %f, %f]\nfgrightcolor: [%f, %f, %f]\nfgalpha: %f\nbgcolor: [%f, %f, %f, %f]\n",
+    lapi->log(DSPLogLevel_Info, "fgleftcolor: [%f, %f, %f]\nfgrightcolor: [%f, %f, %f]\nfgalpha: %f\nbgcolor: [%f, %f, %f, %f]",
         fgleftcolor[0], fgleftcolor[1], fgleftcolor[2], fgrightcolor[0], fgrightcolor[1], fgrightcolor[2], fgalpha,
         bgcolor[0], bgcolor[1], bgcolor[2], bgcolor[3]);
 
