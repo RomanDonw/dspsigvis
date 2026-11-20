@@ -10,7 +10,7 @@
 
 #include "shaders.h"
 
-const unsigned short dspmodule_requiredAPIversion = 3;
+const unsigned short dspmodule_requiredAPIversion = 4;
 
 static GLFWwindow *win;
 #define INITWIDTH 800
@@ -40,7 +40,7 @@ static bool paused = false;
 static void onkey(GLFWwindow *window, int key, int scancode, int action, int mods)
 { if (action == GLFW_PRESS && key == GLFW_KEY_SPACE) paused = !paused; }
 
-unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * const argv[], const char **sysname, const char **dispname)
+DSPModuleReturnCode dspmodule_startup(const DSPLoaderAPI * restrict lapi, DSPModuleStartupFunctionOptions * restrict opts)
 {
     float fgleftcolor[3] = {1, 0, 1};
     float fgrightcolor[3] = {0, 1, 0};
@@ -48,7 +48,7 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
     float bgcolor[4] = {0, 0, 0, 1};
     {
         int p;
-        while ((p = getopt(argc, argv, "b:l:r:a:")) != -1)
+        while ((p = getopt(opts->argc, opts->argv, "b:l:r:a:")) != -1)
         {
             switch (p)
             {
@@ -81,12 +81,12 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
 
                 parseoptfail:
                     lapi->log(DSPLogLevel_Fatal, "error parsing option -%c", (char)p);
-                return 1;
+                return DSPModuleReturnCode_Stop;
             }
         }
     }
 
-    if (!glfwInit()) { lapi->log(DSPLogLevel_Fatal, "failed to initialize GLFW"); return 1; }
+    if (!glfwInit()) { lapi->log(DSPLogLevel_Fatal, "failed to initialize GLFW"); return DSPModuleReturnCode_Stop; }
 
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -203,33 +203,33 @@ unsigned short dspmodule_startup(const DSPLoaderAPI *lapi, int argc, char * cons
         fgleftcolor[0], fgleftcolor[1], fgleftcolor[2], fgrightcolor[0], fgrightcolor[1], fgrightcolor[2], fgalpha,
         bgcolor[0], bgcolor[1], bgcolor[2], bgcolor[3]);
 
-    *sysname = "dspsigvis";
-    *dispname = "signal visualizer";
-    return 0;
+    opts->sysname = "dspsigvis";
+    opts->dispname = "signal visualizer";
+    return DSPModuleReturnCode_Continue;
 
     errorquit_afterinitglfw:
         glfwTerminate();
-    return 1;
+    return DSPModuleReturnCode_Stop;
 }
 
-unsigned short dspmodule_process(const DSPLoaderAPI *lapi, unsigned long long position, unsigned long duration, unsigned long rate, unsigned long long nsectime)
+DSPModuleReturnCode dspmodule_process(const DSPLoaderAPI * restrict lapi, DSPModuleProcessFunctionOptions * restrict opts)
 {
     glfwMakeContextCurrent(win);
-    if (glfwWindowShouldClose(win)) return 1;
+    if (glfwWindowShouldClose(win)) return DSPModuleReturnCode_Quit;
     if (paused) goto skipupdate;
 
-    const float *inleft = lapi->getportbuffer(inleftport, duration);
+    const float *inleft = lapi->getportbuffer(inleftport, opts->duration);
     if (!inleft) goto skiprender;
-    const float *inright = lapi->getportbuffer(inrightport, duration);
+    const float *inright = lapi->getportbuffer(inrightport, opts->duration);
     if (!inright) goto skiprender;
-    
-    const size_t insize = duration * sizeof(float);
+
+    const size_t insize = opts->duration * sizeof(float);
     static size_t currsize = 0;
     if (currsize != insize)
     {
         glNamedBufferData(sampbuffs[0], insize, inleft, GL_DYNAMIC_READ);
         glNamedBufferData(sampbuffs[1], insize, inright, GL_DYNAMIC_READ);
-        glUniform1ui(u_samplescount, duration);
+        glUniform1ui(u_samplescount, opts->duration);
         currsize = insize;
     }
     else
@@ -244,7 +244,7 @@ unsigned short dspmodule_process(const DSPLoaderAPI *lapi, unsigned long long po
     skiprender:
     glfwPollEvents();
 
-    return 0;
+    return DSPModuleReturnCode_Continue;
 }
 
-void dspmodule_cleanup(void) { glfwTerminate(); }
+void dspmodule_cleanup(DSPModuleCleanupFunctionOptions * restrict opts) { glfwTerminate(); }
