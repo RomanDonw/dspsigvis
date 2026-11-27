@@ -44,14 +44,21 @@ const char *fragmentshadersource =
         "float currx = float(curridx) / float(lastidx);"
         "float nextx = float(nextidx) / float(lastidx);"
         "float centx = mix(currx, nextx, 0.5);"
-        
+
+        "float lcurra = leftdata[curridx];"
+        "float lnexta = leftdata[nextidx];"
+
+        "float lline = (lcurra - lnexta) * scrcoord.x +"
+            "(nextx - currx) * scrcoord.y +"
+            "(currx * lnexta - nextx * lcurra);"
+
         "float left = mix(leftdata[curridx], leftdata[nextidx], (scrcoord.x - currx) / (nextx - currx));"
         "float right = mix(rightdata[curridx], rightdata[nextidx], (scrcoord.x - currx) / (nextx - currx));"
 
-        "bool haswide = scrcoord.x >= centx - 0.05 && scrcoord.x <= centx + 0.05;"
-        "bool hasleft = scrcoord.y >= left - 0.01 && scrcoord.y <= left + 0.01;"
-        "bool hasright = scrcoord.y <= right + 0.01 && scrcoord.y >= right - 0.01;"
-        
+        "bool haswide = true;/*scrcoord.x >= centx - 0.05 && scrcoord.x <= centx + 0.05;*/"
+        "bool hasleft = abs(lline) < 0.000001;/*scrcoord.y >= left - 0.01 && scrcoord.y <= left + 0.01*/;"
+        "bool hasright = false;/*scrcoord.y <= right + 0.01 && scrcoord.y >= right - 0.01;*/"
+
         "if (haswide && (hasleft || hasright))"
             "FragmentColor = vec4((hasleft ? fgleftcolor : vec3(0)) + (hasright ? fgrightcolor : vec3(0)), fgalpha);"
         "else FragmentColor = bgcolor;"
