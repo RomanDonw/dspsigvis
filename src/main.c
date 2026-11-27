@@ -97,7 +97,7 @@ DSPModuleReturnCode dspmodule_startup(const DSPLoaderAPI * restrict lapi, DSPMod
     { lapi->log(DSPLogLevel_Fatal, "failed creating GLFW window"); goto errorquit_afterinitglfw; }
     glfwSetKeyCallback(win, onkey);
     glfwMakeContextCurrent(win);
-    
+
     if (!gladLoadGL((void *)glfwGetProcAddress))
     { lapi->log(DSPLogLevel_Fatal, "failed loading OpenGL functions through GLAD"); goto errorquit_afterinitglfw; }
     onresize(win, INITWIDTH, INITHEIGHT);
